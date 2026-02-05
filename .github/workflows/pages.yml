@@ -1,0 +1,59 @@
+name: Build & Deploy raylib (Web)
+
+on:
+  push:
+    branches: ["main"]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Emscripten
+        uses: mymindstorm/setup-emsdk@v14
+
+      - name: Build raylib (Web) + app
+        run: |
+          set -euxo pipefail
+
+          # 1) raylib holen
+          git clone --depth 1 https://github.com/raysan5/raylib.git
+          cd raylib/src
+
+          # 2) raylib für Web bauen (liefert eine .a Library)
+          make -e PLATFORM=PLATFORM_WEB -B
+          cd ../..
+
+          # 3) passende Library-Datei finden (Name kann variieren)
+          RAYLIB_A="$(ls raylib/src/libraylib*.a | head -n 1)"
+          echo "Using raylib lib: $RAYLIB_A"
+
+          # 4) App zu Web (index.html + wasm + js) linken
+          mkdir -p dist
+          emcc -o dist/index.html src/main.c \
+            -Os -Wall \
+            -I./raylib/src \
+            "$RAYLIB_A" \
+            -s USE_GLFW=3 -s ASYNCIFY \
+            -DPLATFORM_WEB
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+    steps:
+      - name: Deploy to GitHub Pages
+        uses: actions/deploy-pages@v4
