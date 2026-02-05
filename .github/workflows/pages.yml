@@ -42,7 +42,8 @@ jobs:
             -I./raylib/src \
             "$RAYLIB_A" \
             -s USE_GLFW=3 -s ASYNCIFY \
-            -DPLATFORM_WEB
+            -DPLATFORM_WEB \
+            --shell-file web/shell.html
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
